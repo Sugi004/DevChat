@@ -1,14 +1,15 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from dotenv import load_dotenv
-import os
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from slowapi import _rate_limit_exceeded_handler
 
 from database import engine
+from limiter import limiter
 from models import Base
 from routers import auth, conversation, messages, users, websocket, uploads, ai
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -47,14 +48,16 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SecurityHeaderMiddleware)
+
 
 # CORS
 
-extra_frontend_origin = os.getenv("FRONTEND_URL")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+def build_allowed_origins() -> list[str]:
+    configured = (os.getenv("FRONTEND_URL") or "").strip()
+    defaults = [
         "http://localhost:3001",
         "http://localhost:5173",
         "http://localhost:3000",
@@ -64,11 +67,17 @@ app.add_middleware(
         "https://www.talkflow.digital",
         "https://talkflow.digital",
         "https://dev-chat-asi7dqasn-sugi004s-projects.vercel.app",
-        *([extra_frontend_origin] if extra_frontend_origin else []),
-    ],
+    ]
+    if configured:
+        defaults.append(configured.rstrip("/"))
+    return list(dict.fromkeys(defaults))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=build_allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
 )
 
 # Include Routers
@@ -85,6 +94,7 @@ app.include_router(ai.router)
 # Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc: Exception):
+    print(f"UNHANDLED ERROR on {request.method} {request.url.path}: {exc}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "An unexpected error occured"},
@@ -146,3 +156,8 @@ async def create_tables():
 @app.get("/")
 async def root():
     return {"message": "TalkFlow API is running"}
+
+
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}

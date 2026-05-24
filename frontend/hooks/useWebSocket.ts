@@ -3,7 +3,36 @@
 import { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
 import type { UseWebSocketOptions, WSMessage, WSOutgoing, MessageType, Message, MembershipEvent } from "@/types";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+function resolveWebSocketBaseUrl(): string {
+    const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
+    if (configuredWsUrl) {
+        return configuredWsUrl.replace(/\/$/, "");
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    if (apiUrl) {
+        try {
+            const url = new URL(apiUrl);
+            url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+            url.pathname = `${url.pathname.replace(/\/$/, "")}/ws`;
+            return url.toString().replace(/\/$/, "");
+        } catch {
+            return apiUrl
+                .replace(/^http:/i, "ws:")
+                .replace(/^https:/i, "wss:")
+                .replace(/\/$/, "") + "/ws";
+        }
+    }
+
+    if (typeof window !== "undefined") {
+        const url = new URL(window.location.origin);
+        url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        url.pathname = "/ws";
+        return url.toString().replace(/\/$/, "");
+    }
+
+    return "ws://localhost:8000/ws";
+}
 
 
 export function useWebSocket({
@@ -50,7 +79,7 @@ export function useWebSocket({
     const connect = useCallback(() => {
         if(!conversation_id || !token || !isMounted.current) return;
         
-        const url = `${WS_URL}/${conversation_id}?token=${token}`;
+        const url = `${resolveWebSocketBaseUrl()}/${conversation_id}?token=${token}`;
         const ws = new WebSocket(url);
         wsRef.current = ws;
         ws.onopen = () => {

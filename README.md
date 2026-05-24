@@ -21,7 +21,7 @@ TalkFlow is a full-stack real-time chat application built as a portfolio-ready p
 ```text
 talkflow/
 ├── backend/
-│   ├── auth.py
+│   ├── backend_auth.py
 │   ├── database.py
 │   ├── limiter.py
 │   ├── main.py
@@ -187,7 +187,7 @@ This project is not end-to-end encrypted today. The backend decrypts message con
 ### Backend responsibilities
 
 - `backend/main.py` wires the FastAPI app, middleware, routers, startup table creation, and health route
-- `backend/auth.py` handles password hashing, JWT creation, and current-user lookup
+- `backend/backend_auth.py` handles password hashing, JWT creation, auth payload decryption, and current-user lookup
 - `backend/models.py` defines users, conversations, participants, and messages
 - `backend/schemas.py` defines API request/response contracts
 - `backend/message_crypto.py` encrypts and decrypts stored message bodies
@@ -257,6 +257,51 @@ npm run dev
 - Backend docs: `http://localhost:8000/docs`
 - Backend OpenAPI: `http://localhost:8000/openapi.json`
 
+## Deployment
+
+TalkFlow is set up to deploy cleanly with a split frontend/backend stack:
+
+- Frontend: Vercel Hobby
+- Backend: Render free web service using the included `render.yaml`
+- Database: any managed Postgres provider with an async connection string
+- Redis: any managed Redis provider that exposes `REDIS_URL`
+
+### Render backend deployment
+
+1. Push the repo to GitHub.
+2. In Render, create a new Blueprint or Web Service from the repository.
+3. Point the backend service at the repo root and use the included `render.yaml`.
+4. Set the required secrets in Render:
+   - `DATABASE_URL`
+   - `REDIS_URL`
+   - `SECRET_KEY`
+   - `MESSAGE_ENCRYPTION_KEY`
+   - `PASSWORD_ENCRYPTION_PRIVATE_KEY`
+   - `FRONTEND_URL`
+   - `BACKEND_PUBLIC_URL`
+5. Optional secrets:
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM`
+   - `GROQ_API_KEY`
+   - `GEMINI_API_KEY`
+6. Redeploy after the environment variables are saved.
+
+### Uploads in the Render setup
+
+AWS-backed uploads are intentionally disabled by default in the sample env files. The upload endpoint now returns a friendly `503` until S3-compatible storage is configured.
+
+To turn uploads back on later, provide:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `S3_BUCKET`
+
+Optional storage overrides:
+
+- `S3_ENDPOINT_URL`
+- `S3_PUBLIC_BASE_URL`
+
 ## Collaboration Setup
 
 If multiple people are contributing to TalkFlow:
@@ -285,6 +330,7 @@ For local development, the backend can be configured to log the verification lin
 | Variable                      | Required    | Purpose                                                    |
 | ----------------------------- | ----------- | ---------------------------------------------------------- |
 | `DATABASE_URL`                | Yes         | SQLAlchemy async database connection string                |
+| `DATABASE_SSL`                | No          | DB SSL mode: `auto`, `true`, `false`, or `require`        |
 | `IS_PRODUCTION`               | No          | Enables production-oriented DB SSL handling                |
 | `SECRET_KEY`                  | Yes         | JWT signing secret and fallback encryption seed            |
 | `ALGORITHM`                   | Yes         | JWT signing algorithm, typically `HS256`                   |
@@ -304,18 +350,20 @@ For local development, the backend can be configured to log the verification lin
 | `REDIS_HOST`                  | No          | Redis host                                                 |
 | `REDIS_PORT`                  | No          | Redis port                                                 |
 | `REDIS_PASSWORD`              | No          | Redis password                                             |
-| `AWS_ACCESS_KEY_ID`           | For uploads | S3 credentials                                             |
-| `AWS_SECRET_ACCESS_KEY`       | For uploads | S3 credentials                                             |
-| `AWS_REGION`                  | For uploads | S3 region                                                  |
-| `S3_BUCKET`                   | For uploads | Upload bucket name                                         |
-| `GOOGLE_API_KEY`              | For AI      | Gemini API access                                          |
+| `AWS_ACCESS_KEY_ID`           | Optional    | S3 credentials when uploads are enabled                    |
+| `AWS_SECRET_ACCESS_KEY`       | Optional    | S3 credentials when uploads are enabled                    |
+| `AWS_REGION`                  | Optional    | S3 region when uploads are enabled                         |
+| `S3_BUCKET`                   | Optional    | Upload bucket name when uploads are enabled                |
+| `S3_ENDPOINT_URL`             | Optional    | S3-compatible endpoint override                            |
+| `S3_PUBLIC_BASE_URL`          | Optional    | Public URL base for non-AWS object storage                 |
+| `GEMINI_API_KEY`              | For AI      | Gemini API access                                          |
 
 ### Frontend
 
 | Variable              | Required | Purpose                     |
 | --------------------- | -------- | --------------------------- |
 | `NEXT_PUBLIC_API_URL` | No       | REST API base URL override  |
-| `NEXT_PUBLIC_WS_URL`  | No       | WebSocket base URL override |
+| `NEXT_PUBLIC_WS_URL`  | No       | WebSocket base URL override. If omitted, it is derived from `NEXT_PUBLIC_API_URL`. |
 
 ### Email verification notes
 

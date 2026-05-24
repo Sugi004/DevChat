@@ -1,15 +1,25 @@
-from redis.asyncio import Redis
-from dotenv import load_dotenv
 import os
+
+from dotenv import load_dotenv
+from redis.asyncio import Redis
 
 load_dotenv()
 
-redis_client = Redis(
-    host=os.getenv("REDIS_HOST", "localhost"),
-    port=int(os.getenv("REDIS_PORT", 6379)),
-    password=os.getenv("REDIS_PASSWORD") or None,
-    decode_responses=True
-)
+
+def build_redis_client() -> Redis:
+    redis_url = (os.getenv("REDIS_URL") or "").strip()
+    if redis_url:
+        return Redis.from_url(redis_url, decode_responses=True)
+
+    return Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        password=os.getenv("REDIS_PASSWORD") or None,
+        decode_responses=True,
+    )
+
+
+redis_client = build_redis_client()
 
 async def get_redis_client():
     return redis_client
@@ -91,5 +101,4 @@ async def reset_unread_count(user_id: int, conversation_id: int):
     
 async def get_unread_count(user_id: int, conversation_id: int) -> int:
     return int(await redis_client.hget(f"unread_count:{user_id}", str(conversation_id)) or 0)
-
 

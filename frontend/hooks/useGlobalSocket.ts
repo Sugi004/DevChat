@@ -3,7 +3,36 @@
 import { useEffect, useRef, useCallback, useLayoutEffect } from "react"
 import { MembershipEvent, Message } from "@/types"
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+function resolveWebSocketBaseUrl(): string {
+    const configuredWsUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
+    if (configuredWsUrl) {
+        return configuredWsUrl.replace(/\/$/, "");
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    if (apiUrl) {
+        try {
+            const url = new URL(apiUrl);
+            url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+            url.pathname = `${url.pathname.replace(/\/$/, "")}/ws`;
+            return url.toString().replace(/\/$/, "");
+        } catch {
+            return apiUrl
+                .replace(/^http:/i, "ws:")
+                .replace(/^https:/i, "wss:")
+                .replace(/\/$/, "") + "/ws";
+        }
+    }
+
+    if (typeof window !== "undefined") {
+        const url = new URL(window.location.origin);
+        url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        url.pathname = "/ws";
+        return url.toString().replace(/\/$/, "");
+    }
+
+    return "ws://localhost:8000/ws";
+}
 
 export function useGlobalSocket({
     user_id,
@@ -39,7 +68,7 @@ export function useGlobalSocket({
 
     const connect = useCallback(() => {
         if (!user_id || !token || !isMounted.current) return;
-        const url = `${WS_URL}/user/${user_id}?token=${token}`;
+        const url = `${resolveWebSocketBaseUrl()}/user/${user_id}?token=${token}`;
         const ws = new WebSocket(url);
 
         console.log("WS URL", url);
