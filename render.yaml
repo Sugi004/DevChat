@@ -5,7 +5,7 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     plan: free
-    autoDeploy: true
+    autoDeploy: false
     healthCheckPath: /healthz
     envVars:
       - key: IS_PRODUCTION

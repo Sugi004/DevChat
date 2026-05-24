@@ -1,8 +1,7 @@
-name: Deploy DevChat
+name: Deploy TalkFlow Backend
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy-backend:
