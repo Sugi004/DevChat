@@ -119,7 +119,10 @@ async def global_exception_handler(request, exc: Exception):
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        if engine.dialect.name == "postgresql":
+        run_legacy_user_migration = (
+            os.getenv("RUN_LEGACY_USER_VERIFICATION_MIGRATION", "false").lower() == "true"
+        )
+        if engine.dialect.name == "postgresql" and run_legacy_user_migration:
             await conn.execute(
                 text(
                     """
