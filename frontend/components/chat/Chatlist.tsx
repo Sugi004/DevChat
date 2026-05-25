@@ -5,7 +5,7 @@ import { useState, useRef } from "react"
 import { Conversation, User } from "@/types"
 import { searchUsers } from "@/lib/users"
 import { ChatListProps } from "@/types"
-import { getAvatarColor, getInitials, validAvatar, convDisplayName } from "@/lib/utils"
+import { getAvatarColor, getInitials, resolveRenderableImageUrl, convDisplayName } from "@/lib/utils"
 
 function timeAgo(iso: string) {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -27,16 +27,25 @@ function lastMsgPreview(conv: Conversation): string {
 }
 
 export function ConvAvatar({ conv }: { conv: Conversation }) {
+    const [imageFailed, setImageFailed] = useState(false);
     const name = conv.is_group
         ? (conv.group_name ?? "Group")
         : (conv.other_user?.full_name ?? conv.other_user?.email ?? "?");
 
-    const avatarUrl = conv.is_group ? validAvatar(conv.group_avatar_url) : validAvatar(conv.other_user?.avatar_url);
+    const avatarUrl = resolveRenderableImageUrl(
+        conv.is_group ? conv.group_avatar_url : conv.other_user?.avatar_url,
+        imageFailed,
+    );
 
     if (avatarUrl) {
         return (
             <div className="relative shrink-0">
-                <img src={avatarUrl} alt={name} className="w-9 h-9 rounded object-cover" />
+                <img
+                    src={avatarUrl}
+                    alt={name}
+                    className="w-9 h-9 rounded object-cover"
+                    onError={() => setImageFailed(true)}
+                />
                 {!conv.is_group && conv.other_user?.is_online && (
                     <span className="absolute -bottom-px -right-px w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#0a0e14]" />
                 )}
@@ -236,6 +245,7 @@ export default function Chatlist({
     const [showModal, setShowModal] = useState(false);
     const [menuConvId, setMenuConvId] = useState<number | null>(null);
     const [filter, setFilter] = useState("");
+    const [currentUserImageFailed, setCurrentUserImageFailed] = useState(false);
     const filtered = filter.trim()
         ? conversations.filter((c) =>
             convDisplayName(c).toLowerCase().includes(filter.toLowerCase())
@@ -363,8 +373,13 @@ export default function Chatlist({
                     <div className="border-t border-[#1e2a35] px-3 py-2.5 flex items-center gap-2.5">
                         <div className="relative shrink-0">
 
-                            {currentUser.avatar_url ? (
-                                <img src={currentUser.avatar_url} alt="" className="w-7 h-7 rounded object-cover" />
+                            {resolveRenderableImageUrl(currentUser.avatar_url, currentUserImageFailed) ? (
+                                <img
+                                    src={resolveRenderableImageUrl(currentUser.avatar_url, currentUserImageFailed) ?? ""}
+                                    alt=""
+                                    className="w-7 h-7 rounded object-cover"
+                                    onError={() => setCurrentUserImageFailed(true)}
+                                />
                             ) : (
                                 <div className={`w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold font-mono ${getAvatarColor(currentUser.full_name ?? currentUser.email)}`}>
                                     {getInitials(currentUser.full_name ?? currentUser.email)}

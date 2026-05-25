@@ -4,7 +4,7 @@
 import { useState } from "react"
 import { Message, User, MessageBubbleProps } from "@/types"
 import CodeBlock from "./Codeblock"
-import { getAvatarColor } from "@/lib/utils"
+import { getAvatarColor, resolveRenderableImageUrl } from "@/lib/utils"
 
 function initials(name: string) {
     const parts = name.trim().split(/\s+/);
@@ -55,11 +55,18 @@ function attachmentKind(msg: Message): "image" | "video" | "file" | null {
 type AvatarUser = Pick<User, "full_name" | "email" | "avatar_url">;
 
 function Avatar({ user }: { user: AvatarUser }) {
+    const [imageFailed, setImageFailed] = useState(false);
     const name = user.full_name ?? user.email ?? "?";
+    const avatarUrl = resolveRenderableImageUrl(user.avatar_url, imageFailed);
 
-    if (user.avatar_url) {
+    if (avatarUrl) {
         return (
-            <img src={user.avatar_url} alt={name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+            <img
+                src={avatarUrl}
+                alt={name}
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+                onError={() => setImageFailed(true)}
+            />
         )
     }
     return (

@@ -20,6 +20,14 @@ export const validAvatar = (url?: string | null): string | null => {
     try { new URL(url); return url; } catch { return null; }
 }
 
+export const resolveRenderableImageUrl = (
+    url?: string | null,
+    imageFailed = false,
+): string | null => {
+    if (imageFailed) return null;
+    return validAvatar(url);
+}
+
 export const getInitials = (name: string): string => {
     const parts = name.trim().split(/\s+/);
     return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();

@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext"
 import { deleteMyAccount, deleteMyAvatar, getMe, updateMe } from "@/lib/users"
 import { User } from "@/types/index"
 import toast from "react-hot-toast"
-import { getAvatarColor, getInitials } from "@/lib/utils"
+import { getAvatarColor, getInitials, validAvatar } from "@/lib/utils"
 import { uploadFile } from "@/lib/uploads"
 import { getErrorMessage } from "@/lib/auth"
 
@@ -45,9 +45,11 @@ export default function ProfilePage() {
     const [editorImageSize, setEditorImageSize] = useState<{ width: number; height: number } | null>(null)
     const [editorSize, setEditorSize] = useState(AVATAR_EDITOR_SIZE)
     const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
+    const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
     const editorImageRef = useRef<HTMLImageElement>(null)
+    const avatarUrl = !avatarLoadFailed ? validAvatar(user?.avatar_url) : null
 
     useEffect(() => {
         setMounted(true)
@@ -80,6 +82,10 @@ export default function ProfilePage() {
         window.addEventListener("resize", updateEditorSize)
         return () => window.removeEventListener("resize", updateEditorSize)
     }, [])
+
+    useEffect(() => {
+        setAvatarLoadFailed(false)
+    }, [user?.avatar_url])
 
     async function handleSave() {
         if (!user) return;
@@ -348,11 +354,12 @@ export default function ProfilePage() {
                                 {/* Avatar section */}
                                 <div className="flex flex-col items-center gap-3 mb-8">
                                     <div className="relative group">
-                                        {user.avatar_url ? (
+                                        {avatarUrl ? (
                                             <img
-                                                key={user.avatar_url}
-                                                src={user.avatar_url}
+                                                key={avatarUrl}
+                                                src={avatarUrl}
                                                 alt={name}
+                                                onError={() => setAvatarLoadFailed(true)}
                                                 className="w-20 h-20 rounded-lg object-cover border-2 border-[#1e2a35]"
                                             />
                                         ) : (
@@ -401,7 +408,7 @@ export default function ProfilePage() {
                                         >
                                             Change
                                         </button>
-                                        {user.avatar_url && (
+                                        {avatarUrl && (
                                             <button
                                                 type="button"
                                                 onClick={handleDeleteAvatar}
@@ -519,7 +526,7 @@ export default function ProfilePage() {
                                 >
                                     Change photo
                                 </button>
-                                {user?.avatar_url && (
+                                {avatarUrl && (
                                     <button
                                         type="button"
                                         onClick={handleDeleteAvatar}
@@ -533,10 +540,11 @@ export default function ProfilePage() {
                         </div>
                         <div className="rounded-3xl border border-[#1e2a35] bg-[#0d1117] p-4 shadow-2xl sm:p-6">
                             <div className="flex items-center justify-center">
-                                {user?.avatar_url ? (
+                                {avatarUrl ? (
                                     <img
-                                        src={user.avatar_url}
+                                        src={avatarUrl}
                                         alt={name}
+                                        onError={() => setAvatarLoadFailed(true)}
                                         className="max-h-[70vh] w-full rounded-3xl object-contain"
                                     />
                                 ) : (
