@@ -102,6 +102,7 @@ export const uploadFile = async (file: File, onProgress?: (p: number) => void): 
     const {upload_url, file_url, content_type} = await getPresignedUrl(file.name, requestedContentType, file.size);
     await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        xhr.responseType = "text";
         xhr.open("PUT", upload_url);
         xhr.setRequestHeader("Content-Type", content_type);
         if (onProgress){
@@ -111,7 +112,14 @@ export const uploadFile = async (file: File, onProgress?: (p: number) => void): 
                 }
             };
         }
-        xhr.onload = () => (xhr.status < 300 ?  resolve() : reject(new Error(`Upload failed: {xhr.statusText} `)));
+        xhr.onload = () => {
+            if (xhr.status < 300) {
+                resolve();
+                return;
+            }
+            const details = xhr.responseText?.trim() || xhr.statusText || "Unknown upload error";
+            reject(new Error(`Upload failed (${xhr.status}): ${details}`));
+        };
         xhr.onerror = () => reject(new Error("S3 Upload, network error"));
         xhr.send(file);
     });
