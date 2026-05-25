@@ -32,13 +32,24 @@ def resolve_connect_args(database_url: str) -> dict:
     if ssl_mode in {"false", "0", "off", "disable"}:
         return {"ssl": False}
 
-    if ssl_mode in {"true", "1", "on", "require", "verify-ca", "verify-full"}:
+    if ssl_mode in {"true", "1", "on", "require"}:
+        insecure_context = ssl.create_default_context()
+        insecure_context.check_hostname = False
+        insecure_context.verify_mode = ssl.CERT_NONE
+        return {"ssl": insecure_context}
+
+    if ssl_mode in {"verify-ca", "verify-full"}:
         return {"ssl": ssl.create_default_context()}
 
     if is_local_host:
         return {"ssl": False}
 
-    return {"ssl": ssl.create_default_context()}
+    # Default remote behavior matches common managed Postgres URLs that require
+    # TLS but don't ship a chain trusted by the local CA bundle.
+    insecure_context = ssl.create_default_context()
+    insecure_context.check_hostname = False
+    insecure_context.verify_mode = ssl.CERT_NONE
+    return {"ssl": insecure_context}
 
 
 def strip_sqlalchemy_unsafe_query_params(database_url: str) -> str:

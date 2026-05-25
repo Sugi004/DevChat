@@ -259,48 +259,20 @@ npm run dev
 
 ## Deployment
 
-TalkFlow is set up to deploy cleanly with a split frontend/backend stack:
+TalkFlow is set up best as a split deployment:
 
-- Frontend: Vercel Hobby
-- Backend: Render free web service using the included `render.yaml`
-- Database: any managed Postgres provider with an async connection string
-- Redis: any managed Redis provider that exposes `REDIS_URL`
+- Frontend: Vercel
+- Backend: Render
+- Database: Supabase Postgres
+- Redis: Upstash Redis
+- File storage: Supabase Storage using its S3-compatible endpoint
 
-### Render backend deployment
+### Production notes
 
-1. Push the repo to GitHub.
-2. In Render, create a new Blueprint or Web Service from the repository.
-3. Point the backend service at the repo root and use the included `render.yaml`.
-4. Set the required secrets in Render:
-   - `DATABASE_URL`
-   - `REDIS_URL`
-   - `SECRET_KEY`
-   - `MESSAGE_ENCRYPTION_KEY`
-   - `PASSWORD_ENCRYPTION_PRIVATE_KEY`
-   - `FRONTEND_URL`
-   - `BACKEND_PUBLIC_URL`
-5. Optional secrets:
-   - `RESEND_API_KEY`
-   - `EMAIL_FROM`
-   - `GROQ_API_KEY`
-   - `GEMINI_API_KEY`
-6. Redeploy after the environment variables are saved.
-
-### Uploads in the Render setup
-
-AWS-backed uploads are intentionally disabled by default in the sample env files. The upload endpoint now returns a friendly `503` until S3-compatible storage is configured.
-
-To turn uploads back on later, provide:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_REGION`
-- `S3_BUCKET`
-
-Optional storage overrides:
-
-- `S3_ENDPOINT_URL`
-- `S3_PUBLIC_BASE_URL`
+- Render should provide the backend runtime and `PORT`.
+- Supabase Postgres should provide `DATABASE_URL`.
+- Upstash should provide `REDIS_URL`.
+- Supabase Storage can keep the current pre-signed upload flow by exposing S3 credentials, region, endpoint, and a public bucket URL.
 
 ## Collaboration Setup
 
@@ -329,7 +301,7 @@ For local development, the backend can be configured to log the verification lin
 
 | Variable                      | Required    | Purpose                                                    |
 | ----------------------------- | ----------- | ---------------------------------------------------------- |
-| `DATABASE_URL`                | Yes         | SQLAlchemy async database connection string                |
+| `DATABASE_URL`                | Yes         | SQLAlchemy async database connection string. Use the Supabase Postgres connection string. |
 | `DATABASE_SSL`                | No          | DB SSL mode: `auto`, `true`, `false`, or `require`        |
 | `IS_PRODUCTION`               | No          | Enables production-oriented DB SSL handling                |
 | `SECRET_KEY`                  | Yes         | JWT signing secret and fallback encryption seed            |
@@ -347,15 +319,18 @@ For local development, the backend can be configured to log the verification lin
 | `SMTP_PASSWORD`               | No          | SMTP password                                              |
 | `SMTP_USE_SSL`                | No          | Enables implicit SSL SMTP connections                      |
 | `SMTP_USE_STARTTLS`           | No          | Enables STARTTLS SMTP upgrade                              |
+| `REDIS_URL`                   | Recommended | Managed Redis connection URL. Use the Upstash Redis URL.   |
 | `REDIS_HOST`                  | No          | Redis host                                                 |
 | `REDIS_PORT`                  | No          | Redis port                                                 |
 | `REDIS_PASSWORD`              | No          | Redis password                                             |
-| `AWS_ACCESS_KEY_ID`           | Optional    | S3 credentials when uploads are enabled                    |
-| `AWS_SECRET_ACCESS_KEY`       | Optional    | S3 credentials when uploads are enabled                    |
-| `AWS_REGION`                  | Optional    | S3 region when uploads are enabled                         |
-| `S3_BUCKET`                   | Optional    | Upload bucket name when uploads are enabled                |
-| `S3_ENDPOINT_URL`             | Optional    | S3-compatible endpoint override                            |
-| `S3_PUBLIC_BASE_URL`          | Optional    | Public URL base for non-AWS object storage                 |
+| `S3_ACCESS_KEY_ID`            | For uploads | S3-compatible access key. Use the Supabase Storage S3 access key. |
+| `S3_SECRET_ACCESS_KEY`        | For uploads | S3-compatible secret key. Use the Supabase Storage S3 secret key. |
+| `AWS_ACCESS_KEY_ID`           | Optional    | Backward-compatible alias for `S3_ACCESS_KEY_ID`           |
+| `AWS_SECRET_ACCESS_KEY`       | Optional    | Backward-compatible alias for `S3_SECRET_ACCESS_KEY`       |
+| `AWS_REGION`                  | For uploads | Storage region used by the S3 client                       |
+| `S3_BUCKET`                   | For uploads | Upload bucket name                                         |
+| `S3_ENDPOINT_URL`             | Recommended | Supabase Storage S3 endpoint                               |
+| `S3_PUBLIC_BASE_URL`          | Recommended | Public file base URL for the configured bucket             |
 | `GEMINI_API_KEY`              | For AI      | Gemini API access                                          |
 
 ### Frontend

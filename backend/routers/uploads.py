@@ -1,7 +1,7 @@
-import boto3
 import os
 import uuid
 
+import boto3
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -16,32 +16,31 @@ router = APIRouter(prefix="/uploads", tags=["Uploads"])
 
 S3_BUCKET = os.getenv("S3_BUCKET")
 AWS_REGION = os.getenv("AWS_REGION")
-S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+S3_ENDPOINT_URL = (os.getenv("S3_ENDPOINT_URL") or "").strip() or None
+S3_PUBLIC_BASE_URL = (os.getenv("S3_PUBLIC_BASE_URL") or "").strip().rstrip("/")
+S3_ACCESS_KEY_ID = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID")
+S3_SECRET_ACCESS_KEY = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY")
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def build_storage_client():
-    if not all([S3_BUCKET, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
+    if not all([S3_BUCKET, AWS_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY]):
         return None
 
     client_kwargs = {
-        "service_name": "s3",
-        "aws_access_key_id": AWS_ACCESS_KEY_ID,
-        "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
+        "aws_access_key_id": S3_ACCESS_KEY_ID,
+        "aws_secret_access_key": S3_SECRET_ACCESS_KEY,
         "region_name": AWS_REGION,
     }
     if S3_ENDPOINT_URL:
         client_kwargs["endpoint_url"] = S3_ENDPOINT_URL
-    return boto3.client(**client_kwargs)
+    return boto3.client("s3", **client_kwargs)
 
 
 def build_public_file_url(file_key: str) -> str:
-    public_base_url = (os.getenv("S3_PUBLIC_BASE_URL") or "").strip().rstrip("/")
-    if public_base_url:
-        return f"{public_base_url}/{file_key}"
+    if S3_PUBLIC_BASE_URL:
+        return f"{S3_PUBLIC_BASE_URL}/{file_key}"
     return f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{file_key}"
 
 #  Get presigned upload URL
@@ -51,7 +50,7 @@ async def get_presigned_url(data: PresignedUrlRequest, current_user: User = Depe
     if s3_client is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="File uploads are disabled until S3-compatible storage is configured.",
+            detail="S3-compatible upload storage is not configured.",
         )
 
     file_name = sanitize_file_name(data.file_name)
