@@ -2,6 +2,7 @@ import os
 import uuid
 
 import boto3
+from botocore.config import Config
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -32,6 +33,7 @@ def build_storage_client():
         "aws_access_key_id": S3_ACCESS_KEY_ID,
         "aws_secret_access_key": S3_SECRET_ACCESS_KEY,
         "region_name": AWS_REGION,
+        "config": Config(s3={"addressing_style": "path"}),
     }
     if S3_ENDPOINT_URL:
         client_kwargs["endpoint_url"] = S3_ENDPOINT_URL
